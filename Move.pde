@@ -1,4 +1,4 @@
-static class Move {
+class Move {
     int row, col, rowMove, colMove;
 
     Move (int r, int c, int rDiff, int cDiff) {

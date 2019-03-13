@@ -1,4 +1,4 @@
-static class MoveStep {
+class MoveStep {
     int rowStep, colStep;
     MoveStep[] next = null;
     boolean intermediateStep = false;
