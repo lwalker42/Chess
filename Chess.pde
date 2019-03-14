@@ -7,10 +7,9 @@ void setup () {
     fullScreen();
     //size(1280, 720);
     strokeWeight(0);
-    print(height);
     tileSize = (int)(height/numRows*.9);
     board = new Board(numRows, numCols, tileSize);
-    board.addPiece(board.new Rook(0, 0, false));
+    board.addPiece(new Rook(0, 0, false));
     board.addPiece(board.new Knight(0, 1, false));
     board.addPiece(board.new Bishop(0, 2, false));
     board.addPiece(board.new Queen(0, 3, false));
