@@ -1,8 +1,8 @@
 class Board {
     int boardNumRows, boardNumCols, tileSize;
-    Tile[][] board, initBoard;
     boolean flip, turn, whiteCheck, blackCheck;
-    Tile selectedTile;
+    Position selected;
+    Piece[][] board, initBoard;
     ArrayList<Move> gameMoves;
 
     Board (int rows, int cols, int tile) {
@@ -13,74 +13,91 @@ class Board {
         turn = true;
         whiteCheck = false;
         blackCheck = false;
-        selectedTile = null;
+        selected = new Position();
         gameMoves = new ArrayList<Move>();
-        board = new Tile[boardNumRows][boardNumCols];
-        initBoard = new Tile[boardNumRows][boardNumCols];
+        board = new Piece[boardNumRows][boardNumCols];
+        initBoard = new Piece[boardNumRows][boardNumCols];
         for (int r = 0; r < boardNumRows; r++) {
             for (int c = 0; c < boardNumCols; c++) {
-                board[r][c] = new Tile(r, c);
+                board[r][c] = null;
             }
         }
     }
-    
-    Board (Board b) { //Copy constructor
-        boardNumRows = b.boardNumRows;
-        boardNumCols = b.boardNumCols;
-        tileSize = b.tileSize;
-        flip = b.flip;
-        turn = b.turn;
-        whiteCheck = b.whiteCheck;
-        blackCheck = b.blackCheck;
-        selectedTile = b.selectedTile;
-        gameMoves = new ArrayList<Move>();
-        board = new Tile[boardNumRows][boardNumCols];
-        initBoard = new Tile[boardNumRows][boardNumCols];
+
+    Board cloneBoard () { //Copy constructor
+        Board newBoard = new Board (boardNumRows, boardNumCols, tileSize);
+        newBoard.flip = flip;
+        newBoard.turn = turn;
+        newBoard.selected = selected.clonePosition();
+        for (Move move : gameMoves)
+            newBoard.gameMoves.add(move);
         for (int r = 0; r < boardNumRows; r++) {
             for (int c = 0; c < boardNumCols; c++) {
-                board[r][c] = new Tile(r, c);
-                initBoard[r][c] = b.initBoard[r][c];
+                Piece p = board[r][c].clonePiece();
+                Piece initP = initBoard[r][c].clonePiece();
+                newBoard.board[r][c] = p;
+                newBoard.initBoard[r][c] = initP;
             }
         }
+        return newBoard;
     }
-    
+
     void initBoard() {
         for (int r = 0; r < boardNumRows; r++) {
             for (int c = 0; c < boardNumCols; c++) {
-                initBoard[r][c] = board[r][c];
+                initBoard[r][c] = board[r][c].clonePiece();
             }
         }
     }
-    
+
     void resetBoard() {
         for (int r = 0; r < boardNumRows; r++) {
             for (int c = 0; c < boardNumCols; c++) {
-                board[r][c] = initBoard[r][c];
+                board[r][c] = initBoard[r][c].clonePiece();
             }
         }
         gameMoves.clear();
     }
 
-    void addPiece(int r, int c, Piece p) {
-        board[r][c].addPiece(p);
+    void addPiece(int row, int col, Piece p) {
+        if (board[row][col] != null)
+            throw new RuntimeException("Trying to move piece to occupied space (" + row + ", " + col + ")\n");
+        else
+            board[row][col] = p;
     }
 
-    Piece removePiece(int r, int c) {
-        return board[r][c].removePiece();
+    Piece removePiece(int row, int col) {
+        if (board[row][col] == null)
+            throw new RuntimeException("Trying to move piece from unoccupied space (" + row + ", " + col + ")\n");
+        else {
+            Piece p = board[row][col];
+            board[row][col] = null;
+            return p;
+        }
     }
 
-    Tile getMouseOver() {
-        for (int r = 0; r < boardNumRows; r++)
-            for (int c = 0; c < boardNumCols; c++)
-                if (board[r][c].isMouseOver())
-                    return board[r][c];
-        return null;
+    Position getMouseOver() {
+        Position pos = new Position();
+        for (int r = 0; r < boardNumRows; r++) {
+            for (int c = 0; c < boardNumCols; c++) {
+                if (isMouseOver(r, c))
+                    pos.setPosition(r, c);
+            }
+        }
+        return pos;
+    }
+    
+    boolean isMouseOver(int row, int col) {
+        float rowAdjusted = (row - boardNumRows/2.) * tileSize;
+        float colAdjusted = (col - boardNumCols/2.) * tileSize;
+        return (colAdjusted <= mouseXAdjusted() && mouseXAdjusted() < colAdjusted + tileSize) 
+            && (rowAdjusted <= mouseYAdjusted() && mouseYAdjusted() < rowAdjusted + tileSize);
     }
 
     void drawBoard() {
         for (int r = 0; r < boardNumRows; r++) {
             for (int c = 0; c < boardNumCols; c++) {
-                Tile t = board[r][c];
+                Tile t = board[r][c];  // don't forget to add Piece.moved to constructor and cloner (line 233-ish)
                 if (t == selectedTile)
                     t.drawTile(255, 255, 255);
                 else if (t.isMouseOver())
@@ -197,141 +214,52 @@ class Board {
 
     void flip() {
         flip = !flip;
-        Tile[][] tmp = new Tile[boardNumRows][boardNumCols];
+        Piece[][] tmp = new Piece[boardNumRows][boardNumCols];
         for (int r = 0; r < boardNumRows; r++) {
             for (int c = 0; c < boardNumCols; c++) {
                 tmp[r][c] = board[boardNumRows-r-1][boardNumCols-c-1];
-                tmp[r][c].setLocation(r, c);
             }
         }
         board = tmp;
     }
-    
-    
+
     /***********************************************/
     /***********************************************/
     /***********************************************/
-    class Tile {
-        int row, col;
-        float rowAdjusted, colAdjusted;
-        Piece currentPiece = null;
-        boolean impassable = false;
-    
-        Tile (int r, int c) {
-            row = r;
-            col = c;
-            adjustRowCol();
-        }
-    
-        Tile (int r, int c, boolean i) {
-            this(r, c);
-            impassable = i;
-        }
-    
-        int getRow() {
-            return row;
-        }
-    
-        int getCol() {
-            return col;
-        }
-    
-        Piece getPiece() {
-            return currentPiece;
-        }
-    
-        void adjustRowCol() {
-            rowAdjusted = (row - boardNumRows/2.) * tileSize;
-            colAdjusted = (col - boardNumCols/2.) * tileSize;
-        }
-    
-        void setLocation(int r, int c) {
-            row = r;
-            col = c;
-            adjustRowCol();
-        }
-    
-        boolean isOccupied () {
-            return currentPiece != null;
-        }
-    
-        void addPiece (Piece p) {
-            if (currentPiece != null) {
-                throw new RuntimeException("Trying to move piece to occupied space (" + row + ", " + col + ")\n");
-            }
-            currentPiece = p;
-        }
-    
-        Piece removePiece () {
-            if (currentPiece == null) {
-                throw new RuntimeException("Trying to move piece from unoccupied space (" + row + ", " + col + ")\n");
-            }
-            Piece p = currentPiece;
-            currentPiece = null;
-            return p;
-        }
-    
-    
-        boolean isMouseOver() {
-            return (colAdjusted <= mouseXAdjusted() && mouseXAdjusted() < colAdjusted + tileSize) 
-                && (rowAdjusted <= mouseYAdjusted() && mouseYAdjusted() < rowAdjusted + tileSize);
-        }
-    
-        void drawTile() {
-            if ((row % 2) == (col % 2))
-                fill(#f0d9b5); //light color
-            else 
-            fill(#b58863); //dark color
-            /*if (isMouseOver())
-             fill(255, 0, 0);*/
-            rect(colAdjusted, rowAdjusted, tileSize, tileSize);
-            if (currentPiece != null)
-                image(currentPiece.getPieceImage(), colAdjusted, rowAdjusted, tileSize, tileSize);
-        }
-    
-        void drawTile(int r, int g, int b) {
-            fill(r, g, b);
-            rect(colAdjusted, rowAdjusted, tileSize, tileSize);
-            if (currentPiece != null)
-                image(currentPiece.getPieceImage(), colAdjusted, rowAdjusted, tileSize, tileSize);
-        }
-    }
-    
-    /***********************************************/
-    /***********************************************/
-    /***********************************************/
-    
-     class Piece {
+
+    abstract class Piece {
         MoveStep[] moves, captures;
         boolean player, moved = false; //player == true: Player 1/white; player == false: Player 2/black
-        PImage pieceImage;
-    
+        PImage pieceImage; //add moved to constructor and cloner
+
         Piece (boolean t, PImage p) {
             player = t;
             pieceImage = p;
         }
-        
+
         void moved() {
             moved = true;
         }
-    
+
         MoveStep[] getMoves () {
             return moves;
         }
-    
+
         MoveStep[] getCaptures () {
             return captures;
         }
-    
+
         boolean getPlayer () {
             return player;
         }
-    
+
         PImage getPieceImage() {
             return pieceImage;
         }
+        
+        abstract Piece clonePiece ();
     }
-    
+
     class Pawn extends Piece {
         Pawn (boolean t) {
             super (t, loadImage(t?"ChessPieces/whitePawn.png":"ChessPieces/blackPawn.png"));
@@ -341,13 +269,17 @@ class Board {
             moves = new MoveStep[] {m1};
             captures = new MoveStep[] {m2, m3};
         }
-    
+
         MoveStep[] getMoves () {
             return moved?moves:(MoveStep[])append(moves, new MoveStep(-2, 0));
         }
+        
+        Pawn clonePiece () {
+            return new Pawn(player);
+        }
     }
-    
-    
+
+
     class Bishop extends Piece {
         Bishop (boolean t) {
             super (t, loadImage(t?"ChessPieces/whiteBishop.png":"ChessPieces/blackBishop.png"));
@@ -362,9 +294,13 @@ class Board {
             moves = new MoveStep[] {m1, m2, m3, m4};
             captures = new MoveStep[] {m1, m2, m3, m4};
         }
+        
+        Bishop clonePiece () {
+            return new Bishop(player);
+        }
     }
-    
-    
+
+
     class Knight extends Piece { //Can also explicitly specify Knight moves as (2, 1) without intermediate steps 
         Knight (boolean t) {
             super (t, loadImage(t?"ChessPieces/whiteKnight.png":"ChessPieces/blackKnight.png"));
@@ -381,9 +317,13 @@ class Board {
             moves = new MoveStep[] {m1, m2, m3, m4};
             captures = new MoveStep[] {m1, m2, m3, m4};
         }
+        
+        Knight clonePiece () {
+            return new Knight(player);
+        }
     }
-    
-    
+
+
     class Rook extends Piece {
         Rook (boolean t) {
             super (t, loadImage(t?"ChessPieces/whiteRook.png":"ChessPieces/blackRook.png"));
@@ -398,9 +338,13 @@ class Board {
             moves = new MoveStep[] {m1, m2, m3, m4};
             captures = new MoveStep[] {m1, m2, m3, m4};
         }
+        
+        Rook clonePiece () {
+            return new Rook(player);
+        }
     }
-    
-    
+
+
     class Queen extends Piece {
         Queen (boolean t) {
             super (t, loadImage(t?"ChessPieces/whiteQueen.png":"ChessPieces/blackQueen.png"));
@@ -423,9 +367,13 @@ class Board {
             moves = new MoveStep[] {m1, m2, m3, m4, m5, m6, m7, m8};
             captures = new MoveStep[] {m1, m2, m3, m4, m5, m6, m7, m8};
         }
+        
+        Queen clonePiece () {
+            return new Queen(player);
+        }
     }
-    
-    
+
+
     class King extends Piece {
         King (boolean t) {
             super (t, loadImage(t?"ChessPieces/whiteKing.png":"ChessPieces/blackKing.png"));
@@ -440,10 +388,68 @@ class Board {
             moves = new MoveStep[] {m1, m2, m3, m4, m5, m6, m7, m8};
             captures = new MoveStep[] {m1, m2, m3, m4, m5, m6, m7, m8};
         }
+        
+        King clonePiece () {
+            return new King(player);
+        }
     }
-    
+
     /***********************************************/
     /***********************************************/
     /***********************************************/
 
+    class Position {
+        boolean exists;
+        int row, col;
+
+        Position (int r, int c, boolean e) {
+            assert !e || (0 <= r && r < boardNumRows && 0 <= c && c < boardNumCols): "Position out of bounds";
+            row = r;
+            col = c;
+            exists = e;
+        }
+
+        Position () {
+            exists = false;
+        }
+
+        Position clonePosition () {
+            return new Position (row, col, exists);
+        }
+
+        void clear() {
+            exists = false;
+        }
+
+        boolean isPosition() {
+            return exists;
+        }
+
+        int getRow() {
+            return row;
+        }
+
+        int getCol() {
+            return col;
+        }
+
+        void setRow(int r) {
+            assert 0 <= r && r < boardNumRows && exists: "Position out of bounds";
+            row = r;
+            exists = true;
+        }
+
+        void setCol(int c) {
+            assert exists && 0 <= c && c < boardNumCols: "Position out of bounds";
+            col = c;
+            exists = true;
+        }
+
+        void setPosition(int r, int c) {
+            assert 0 <= r && r < boardNumRows && 0 <= c && c < boardNumCols: "Position out of bounds";
+            row = r;
+            col = c;
+            exists = true;
+        }
+    }
 }
