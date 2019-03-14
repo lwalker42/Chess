@@ -7,7 +7,6 @@ void setup () {
     fullScreen();
     //size(1280, 720);
     strokeWeight(0);
-    print(height);
     tileSize = (int)(height/numRows*.9);
     board = new Board(numRows, numCols, tileSize);
     board.addPiece(0, 0, board.new Rook(false));
@@ -50,6 +49,7 @@ float mouseYAdjusted() {
 
 void keyPressed() { 
     if (key == ' ') board.flip();
+    board.resetBoard();
 }
 
 void mousePressed() { 

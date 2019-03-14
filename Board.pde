@@ -1,7 +1,7 @@
 class Board {
     int boardNumRows, boardNumCols, tileSize;
     Tile[][] board, initBoard;
-    boolean flip, turn, whiteCheck, blackCheck;
+    boolean flip, turn;
     Tile selectedTile;
     ArrayList<Move> gameMoves;
 
@@ -11,8 +11,6 @@ class Board {
         tileSize = tile;
         flip = false;
         turn = true;
-        whiteCheck = false;
-        blackCheck = false;
         selectedTile = null;
         gameMoves = new ArrayList<Move>();
         board = new Tile[boardNumRows][boardNumCols];
@@ -23,27 +21,31 @@ class Board {
             }
         }
     }
-    
+
     Board (Board b) { //Copy constructor
         boardNumRows = b.boardNumRows;
         boardNumCols = b.boardNumCols;
         tileSize = b.tileSize;
         flip = b.flip;
         turn = b.turn;
-        whiteCheck = b.whiteCheck;
-        blackCheck = b.blackCheck;
         selectedTile = b.selectedTile;
         gameMoves = new ArrayList<Move>();
         board = new Tile[boardNumRows][boardNumCols];
         initBoard = new Tile[boardNumRows][boardNumCols];
         for (int r = 0; r < boardNumRows; r++) {
             for (int c = 0; c < boardNumCols; c++) {
-                board[r][c] = new Tile(r, c);
+                board[r][c] = b.board[r][c];
                 initBoard[r][c] = b.initBoard[r][c];
             }
         }
     }
-    
+
+    Board tryMove (Move m) {
+        Board tempBoard = new Board(this);
+        tempBoard.makeMove(m);
+        return tempBoard;
+    }
+
     void initBoard() {
         for (int r = 0; r < boardNumRows; r++) {
             for (int c = 0; c < boardNumCols; c++) {
@@ -51,7 +53,7 @@ class Board {
             }
         }
     }
-    
+
     void resetBoard() {
         for (int r = 0; r < boardNumRows; r++) {
             for (int c = 0; c < boardNumCols; c++) {
@@ -67,6 +69,10 @@ class Board {
 
     Piece removePiece(int r, int c) {
         return board[r][c].removePiece();
+    }
+
+    boolean inBounds(int r, int c) {
+        return (0 <= r && r < boardNumRows) && (0 <= c && c < boardNumCols);
     }
 
     Tile getMouseOver() {
@@ -85,6 +91,10 @@ class Board {
                     t.drawTile(255, 255, 255);
                 else if (t.isMouseOver())
                     t.drawTile(255, 0, 0);
+                else if (inCheck(true) && board[r][c].isOccupied() && board[r][c].getPiece() instanceof King && board[r][c].getPiece().getPlayer())
+                    t.drawTile(0, 0, 0);
+                else if (inCheck(false) && board[r][c].isOccupied() && board[r][c].getPiece() instanceof King && !board[r][c].getPiece().getPlayer())
+                    t.drawTile(0, 0, 0);
                 else
                     t.drawTile();
             }
@@ -112,10 +122,26 @@ class Board {
         }
     }
 
-    boolean inBounds(int r, int c) {
-        return (0 <= r && r < boardNumRows) && (0 <= c && c < boardNumCols);
+    boolean inCheck(boolean player) {
+        for (int r = 0; r < boardNumRows; r++) {
+            for (int c = 0; c < boardNumCols; c++) {
+                if (board[r][c].isOccupied() && (board[r][c].getPiece().getPlayer() ^ player)) {
+                    ArrayList<Move> moves = getMoves(r, c);
+                    for (Move move : moves) {
+                        int newRow = move.getFinalPosR();
+                        int newCol = move.getFinalPosC();
+                        if (board[newRow][newCol].isOccupied()) {
+                            Piece p = board[newRow][newCol].getPiece();
+                            if ((p instanceof King) && !(p.getPlayer() ^ player))
+                                return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
     }
-
+    
     ArrayList<Move> getMoves(int r, int c) {
         if (!board[r][c].isOccupied())
             return new ArrayList<Move>();
@@ -126,6 +152,12 @@ class Board {
         continueMoves(moves, moveSteps, p, r, c, 0, 0, false);
         continueMoves(moves, captureSteps, p, r, c, 0, 0, true);
         return moves;
+    }
+
+    void addIfSafe(ArrayList<Move> validMoves, Move move) {return;
+        /*Board temp = tryMove(move);
+        if (!temp.inCheck(turn))
+            validMoves.add(move);*/
     }
 
     ArrayList<Move> continueMoves(ArrayList<Move> validMoves, MoveStep[] moveSteps, Piece p, int r, int c, int rowMove, int colMove, boolean capture) { //capture == false: move; capture == true: capture
@@ -206,8 +238,8 @@ class Board {
         }
         board = tmp;
     }
-    
-    
+
+
     /***********************************************/
     /***********************************************/
     /***********************************************/
@@ -216,52 +248,52 @@ class Board {
         float rowAdjusted, colAdjusted;
         Piece currentPiece = null;
         boolean impassable = false;
-    
+
         Tile (int r, int c) {
             row = r;
             col = c;
             adjustRowCol();
         }
-    
+
         Tile (int r, int c, boolean i) {
             this(r, c);
             impassable = i;
         }
-    
+
         int getRow() {
             return row;
         }
-    
+
         int getCol() {
             return col;
         }
-    
+
         Piece getPiece() {
             return currentPiece;
         }
-    
+
         void adjustRowCol() {
             rowAdjusted = (row - boardNumRows/2.) * tileSize;
             colAdjusted = (col - boardNumCols/2.) * tileSize;
         }
-    
+
         void setLocation(int r, int c) {
             row = r;
             col = c;
             adjustRowCol();
         }
-    
+
         boolean isOccupied () {
             return currentPiece != null;
         }
-    
+
         void addPiece (Piece p) {
             if (currentPiece != null) {
                 throw new RuntimeException("Trying to move piece to occupied space (" + row + ", " + col + ")\n");
             }
             currentPiece = p;
         }
-    
+
         Piece removePiece () {
             if (currentPiece == null) {
                 throw new RuntimeException("Trying to move piece from unoccupied space (" + row + ", " + col + ")\n");
@@ -270,13 +302,13 @@ class Board {
             currentPiece = null;
             return p;
         }
-    
-    
+
+
         boolean isMouseOver() {
             return (colAdjusted <= mouseXAdjusted() && mouseXAdjusted() < colAdjusted + tileSize) 
                 && (rowAdjusted <= mouseYAdjusted() && mouseYAdjusted() < rowAdjusted + tileSize);
         }
-    
+
         void drawTile() {
             if ((row % 2) == (col % 2))
                 fill(#f0d9b5); //light color
@@ -288,7 +320,7 @@ class Board {
             if (currentPiece != null)
                 image(currentPiece.getPieceImage(), colAdjusted, rowAdjusted, tileSize, tileSize);
         }
-    
+
         void drawTile(int r, int g, int b) {
             fill(r, g, b);
             rect(colAdjusted, rowAdjusted, tileSize, tileSize);
@@ -296,61 +328,61 @@ class Board {
                 image(currentPiece.getPieceImage(), colAdjusted, rowAdjusted, tileSize, tileSize);
         }
     }
-    
+
     /***********************************************/
     /***********************************************/
     /***********************************************/
-    
-     class Piece {
+
+    class Piece {
         MoveStep[] moves, captures;
         boolean player, moved = false; //player == true: Player 1/white; player == false: Player 2/black
         PImage pieceImage;
-    
-        Piece (boolean t, PImage p) {
-            player = t;
-            pieceImage = p;
+
+        Piece (boolean p, PImage i) {
+            player = p;
+            pieceImage = i;
         }
-        
+
         void moved() {
             moved = true;
         }
-    
+
         MoveStep[] getMoves () {
             return moves;
         }
-    
+
         MoveStep[] getCaptures () {
             return captures;
         }
-    
+
         boolean getPlayer () {
             return player;
         }
-    
+
         PImage getPieceImage() {
             return pieceImage;
         }
     }
-    
+
     class Pawn extends Piece {
-        Pawn (boolean t) {
-            super (t, loadImage(t?"ChessPieces/whitePawn.png":"ChessPieces/blackPawn.png"));
+        Pawn (boolean p) {
+            super (p, loadImage(p?"ChessPieces/whitePawn.png":"ChessPieces/blackPawn.png"));
             MoveStep m1 = new MoveStep(-1, 0);
             MoveStep m2 = new MoveStep(-1, -1);
             MoveStep m3 = new MoveStep(-1, 1);
             moves = new MoveStep[] {m1};
             captures = new MoveStep[] {m2, m3};
         }
-    
+
         MoveStep[] getMoves () {
             return moved?moves:(MoveStep[])append(moves, new MoveStep(-2, 0));
         }
     }
-    
-    
+
+
     class Bishop extends Piece {
-        Bishop (boolean t) {
-            super (t, loadImage(t?"ChessPieces/whiteBishop.png":"ChessPieces/blackBishop.png"));
+        Bishop (boolean p) {
+            super (p, loadImage(p?"ChessPieces/whiteBishop.png":"ChessPieces/blackBishop.png"));
             MoveStep m1 = new MoveStep(1, 1);
             MoveStep m2 = new MoveStep(1, -1);
             MoveStep m3 = new MoveStep(-1, 1);
@@ -363,11 +395,11 @@ class Board {
             captures = new MoveStep[] {m1, m2, m3, m4};
         }
     }
-    
-    
+
+
     class Knight extends Piece { //Can also explicitly specify Knight moves as (2, 1) without intermediate steps 
-        Knight (boolean t) {
-            super (t, loadImage(t?"ChessPieces/whiteKnight.png":"ChessPieces/blackKnight.png"));
+        Knight (boolean p) {
+            super (p, loadImage(p?"ChessPieces/whiteKnight.png":"ChessPieces/blackKnight.png"));
             MoveStep m1 = new MoveStep(2, 0, true);
             MoveStep m2 = new MoveStep(-2, 0, true);
             MoveStep m3 = new MoveStep(0, 2, true);
@@ -382,11 +414,11 @@ class Board {
             captures = new MoveStep[] {m1, m2, m3, m4};
         }
     }
-    
-    
+
+
     class Rook extends Piece {
-        Rook (boolean t) {
-            super (t, loadImage(t?"ChessPieces/whiteRook.png":"ChessPieces/blackRook.png"));
+        Rook (boolean p) {
+            super (p, loadImage(p?"ChessPieces/whiteRook.png":"ChessPieces/blackRook.png"));
             MoveStep m1 = new MoveStep(1, 0);
             MoveStep m2 = new MoveStep(-1, 0);
             MoveStep m3 = new MoveStep(0, 1);
@@ -399,11 +431,11 @@ class Board {
             captures = new MoveStep[] {m1, m2, m3, m4};
         }
     }
-    
-    
+
+
     class Queen extends Piece {
-        Queen (boolean t) {
-            super (t, loadImage(t?"ChessPieces/whiteQueen.png":"ChessPieces/blackQueen.png"));
+        Queen (boolean p) {
+            super (p, loadImage(p?"ChessPieces/whiteQueen.png":"ChessPieces/blackQueen.png"));
             MoveStep m1 = new MoveStep(1, 1);
             MoveStep m2 = new MoveStep(1, -1);
             MoveStep m3 = new MoveStep(-1, 1);
@@ -424,11 +456,11 @@ class Board {
             captures = new MoveStep[] {m1, m2, m3, m4, m5, m6, m7, m8};
         }
     }
-    
-    
+
+
     class King extends Piece {
-        King (boolean t) {
-            super (t, loadImage(t?"ChessPieces/whiteKing.png":"ChessPieces/blackKing.png"));
+        King (boolean p) {
+            super (p, loadImage(p?"ChessPieces/whiteKing.png":"ChessPieces/blackKing.png"));
             MoveStep m1 = new MoveStep(1, 1);
             MoveStep m2 = new MoveStep(1, -1);
             MoveStep m3 = new MoveStep(-1, 1);
@@ -441,9 +473,8 @@ class Board {
             captures = new MoveStep[] {m1, m2, m3, m4, m5, m6, m7, m8};
         }
     }
-    
-    /***********************************************/
-    /***********************************************/
-    /***********************************************/
 
+    /***********************************************/
+    /***********************************************/
+    /***********************************************/
 }
