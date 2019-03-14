@@ -172,15 +172,15 @@ class Board {
         if (selected.isValid()) {
             moves = getMoves(selected.getRow(), selected.getCol());
         }/* else {
-         for (int r = 0; r < boardNumRows; r++) {
-         for (int c = 0; c < boardNumCols; c++) {
-         Tile t = board[r][c];
-         if (t.isMouseOver()) {
-         moves = getMoves(r, c);
-         }
-         }
-         }
-         }*/
+             for (int r = 0; r < boardNumRows; r++) {
+                 for (int c = 0; c < boardNumCols; c++) {
+                     Tile t = board[r][c];
+                     if (t.isMouseOver()) {
+                         moves = getMoves(r, c);
+                     }
+                 }
+             }
+        }*/
         for (Move move : moves) {
             int newRow = move.getFinalPosR();
             int newCol = move.getFinalPosC();
@@ -209,54 +209,22 @@ class Board {
         return false;
     }
     
-    ArrayList<Move> getMoves(int r, int c) {
-        if (!isOccupied(r, c))
-            return new ArrayList<Move>();
-        Piece p = board[r][c];
-        MoveStep[] moveSteps = p.getMoves();
-        MoveStep[] captureSteps = p.getCaptures();
-        ArrayList<Move> moves = new ArrayList<Move>();
-        continueMoves(moves, moveSteps, p, r, c, 0, 0, false);
-        continueMoves(moves, captureSteps, p, r, c, 0, 0, true);
-        return moves;
-    }
-
     void addIfSafe(ArrayList<Move> validMoves, Move move) {return;
         /*Board temp = tryMove(move);
         if (!temp.inCheck(turn))
             validMoves.add(move);*/
     }
-
-    ArrayList<Move> continueMoves(ArrayList<Move> validMoves, MoveStep[] moveSteps, Piece p, int r, int c, int rowMove, int colMove, boolean capture) { //capture == false: move; capture == true: capture
-        if (moveSteps != null) {
-            for (MoveStep moveStep : moveSteps) {
-                int newRowMove = rowMove + moveStep.getRowStep()*(p.getPlayer()^flip?1:-1);
-                int newColMove = colMove + moveStep.getColStep()*(p.getPlayer()^flip?1:-1);
-                //Can check for duplicate moves here
-                if (moveStep.isIntermediate()) { //Knight moves
-                    continueMoves(validMoves, moveStep.getNextMove(), p, r, c, newRowMove, newColMove, capture);
-                } else if (inBounds(r + newRowMove, c + newColMove)) {
-                    if (!isOccupied(r+newRowMove, c+newColMove) && !capture) { //Move to empty space
-                        validMoves.add(new Move(r, c, newRowMove, newColMove));
-                        continueMoves(validMoves, moveStep.getNextMove(), p, r, c, newRowMove, newColMove, capture);
-                    } else if (isOccupied(r+newRowMove, c+newColMove) && capture) {
-                        if (board[r+newRowMove][c+newColMove].getPlayer() ^ p.getPlayer()) { //Move to opposing occupied space; stops movement
-                            validMoves.add(new Move(r, c, newRowMove, newColMove));
-                        }
-                    } else if (capture) {
-                        continueMoves(validMoves, moveStep.getNextMove(), p, r, c, newRowMove, newColMove, capture);
-                    }
-                }
-            }
-        }
-        return validMoves;
+    
+    ArrayList<Move> getMoves(int r, int c) { 
+        return null;
+        //if (board[r][c].getPiece() != null); return null;
     }
 
     Move validMove(Position start, Position end) {
         //Returns the correct move from start to end if it exists, and null otherwise
         ArrayList<Move> moves = getMoves(start.getRow(), start.getCol());
         for (Move move : moves) {
-            if (move.getFinalPosR() == end.getRow() && move.getFinalPosC() == end.getCol())
+            if (move.getNewRow() == end.getRow() && move.getNewCol() == end.getCol())
                 return move;
         }
         return null;
@@ -305,7 +273,6 @@ class Board {
         board = tmp;
     }
 
-
     /***********************************************/
     /***********************************************/
     /***********************************************/
@@ -341,8 +308,45 @@ class Board {
         }
         
         abstract Piece clonePiece ();
+            
+        ArrayList<Move> getMoves(int r, int c) {
+            if (!isOccupied(r, c))
+                return new ArrayList<Move>();
+            Piece p = board[r][c];
+            MoveStep[] moveSteps = p.getMoves();
+            MoveStep[] captureSteps = p.getCaptures();
+            ArrayList<Move> moves = new ArrayList<Move>();
+            continueMoves(moves, moveSteps, p, r, c, 0, 0, false);
+            continueMoves(moves, captureSteps, p, r, c, 0, 0, true);
+            return moves;
+        }
+    
+        ArrayList<Move> continueMoves(ArrayList<Move> validMoves, MoveStep[] moveSteps, Piece p, int r, int c, int rowMove, int colMove, boolean capture) { //capture == false: move; capture == true: capture
+            if (moveSteps != null) {
+                for (MoveStep moveStep : moveSteps) {
+                    int newRowMove = rowMove + moveStep.getRowStep()*(p.getPlayer()^flip?1:-1);
+                    int newColMove = colMove + moveStep.getColStep()*(p.getPlayer()^flip?1:-1);
+                    //Can check for duplicate moves here
+                    if (moveStep.isIntermediate()) { //Knight moves
+                        continueMoves(validMoves, moveStep.getNextMove(), p, r, c, newRowMove, newColMove, capture);
+                    } else if (inBounds(r + newRowMove, c + newColMove)) {
+                        if (!isOccupied(r+newRowMove, c+newColMove) && !capture) { //Move to empty space
+                            validMoves.add(new Move(r, c, newRowMove, newColMove));
+                            continueMoves(validMoves, moveStep.getNextMove(), p, r, c, newRowMove, newColMove, capture);
+                        } else if (isOccupied(r+newRowMove, c+newColMove) && capture) {
+                            if (board[r+newRowMove][c+newColMove].getPlayer() ^ p.getPlayer()) { //Move to opposing occupied space; stops movement
+                                validMoves.add(new Move(r, c, newRowMove, newColMove));
+                            }
+                        } else if (capture) {
+                            continueMoves(validMoves, moveStep.getNextMove(), p, r, c, newRowMove, newColMove, capture);
+                        }
+                    }
+                }
+            }
+            return validMoves;
+        }
     }
-
+    
     class Pawn extends Piece {
         Pawn (boolean p) {
             super (p, loadImage(p?"ChessPieces/whitePawn.png":"ChessPieces/blackPawn.png"));
@@ -554,5 +558,47 @@ class Board {
             col = c;
             exists = true;
         }
+    }
+    
+    /***********************************************/
+    /***********************************************/
+    /***********************************************/
+    
+    class Move {
+        int row, col, newRow, newCol, capturedRow = -1, capturedCol = -1;
+        Piece newPiece; //defaults to old piece
+        Move next = null;
+        
+        Move (int r, int c, int newR, int newC) {
+            row = r;
+            col = c;
+            newRow = newR;
+            newCol = newC;
+        }
+        
+        int getRow() {
+            return row;
+        }
+        
+        int getCol() {
+            return row;
+        }
+        
+        int getNewRow() {
+            return newRow;
+        }
+        
+        int getNewCol() {
+            return newRow;
+        }
+        
+        int getCapturedRow() {
+            return newRow;
+        }
+        
+        int getCapturedCol() {
+            return newRow;
+        }
+        
     }
 }
