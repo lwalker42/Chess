@@ -33,19 +33,26 @@ class Board {
             newBoard.gameMoves.add(move);
         for (int r = 0; r < boardNumRows; r++) {
             for (int c = 0; c < boardNumCols; c++) {
-                Piece p = board[r][c].clonePiece();
-                Piece initP = initBoard[r][c].clonePiece();
+                Piece p = clonePiece(board, r, c);
+                Piece initP = clonePiece(initBoard, r, c);
                 newBoard.board[r][c] = p;
                 newBoard.initBoard[r][c] = initP;
             }
         }
         return newBoard;
     }
+    
+    Piece clonePiece(Piece [][] b, int r, int c) {
+        if (b[r][c] == null) 
+            return null;
+        else
+            return b[r][c].clonePiece();
+    }
 
     void initBoard() {
         for (int r = 0; r < boardNumRows; r++) {
             for (int c = 0; c < boardNumCols; c++) {
-                initBoard[r][c] = board[r][c].clonePiece();
+                initBoard[r][c] = clonePiece(board, r, c);
             }
         }
     }
@@ -53,27 +60,51 @@ class Board {
     void resetBoard() {
         for (int r = 0; r < boardNumRows; r++) {
             for (int c = 0; c < boardNumCols; c++) {
-                board[r][c] = initBoard[r][c].clonePiece();
+                board[r][c] = clonePiece(initBoard, r, c);
             }
         }
         gameMoves.clear();
     }
 
+    boolean isOccupied(int row, int col) {
+        return board[row][col] != null;
+    }
+    
+    boolean isOccupied(Position pos) {
+        assert pos.isValid() : "invalid position";
+        return board[pos.getRow()][pos.getCol()] != null;
+    }
+    
+    Piece getPiece(Position pos) {
+        assert pos.isValid() : "invalid position";
+        return board[pos.getRow()][pos.getCol()];
+    }
+
     void addPiece(int row, int col, Piece p) {
-        if (board[row][col] != null)
+        if (isOccupied(row, col))
             throw new RuntimeException("Trying to move piece to occupied space (" + row + ", " + col + ")\n");
         else
             board[row][col] = p;
     }
+    
+    void addPiece(Position pos, Piece p) {
+        assert pos.isValid() : "invalid position";
+        addPiece(pos.getRow(), pos.getCol(), p);
+    }
 
     Piece removePiece(int row, int col) {
-        if (board[row][col] == null)
+        if (!isOccupied(row, col))
             throw new RuntimeException("Trying to move piece from unoccupied space (" + row + ", " + col + ")\n");
         else {
             Piece p = board[row][col];
             board[row][col] = null;
             return p;
         }
+    }
+    
+    Piece removePiece(Position pos) {
+        assert pos.isValid() : "invalid position";
+        return removePiece(pos.getRow(), pos.getCol());
     }
 
     Position getMouseOver() {
@@ -97,21 +128,38 @@ class Board {
     void drawBoard() {
         for (int r = 0; r < boardNumRows; r++) {
             for (int c = 0; c < boardNumCols; c++) {
-                Tile t = board[r][c];  // don't forget to add Piece.moved to constructor and cloner (line 233-ish)
-                if (t == selectedTile)
-                    t.drawTile(255, 255, 255);
-                else if (t.isMouseOver())
-                    t.drawTile(255, 0, 0);
+                if (selected.isSamePosition(r, c))
+                    drawTile(r, c, 255, 255, 255);
+                else if (isMouseOver(r, c))
+                    drawTile(r, c, 255, 0, 0);
                 else
-                    t.drawTile();
+                    drawTile(r, c);
             }
         }
     }
 
+    void drawTile(int row, int col, int r, int g, int b) {
+        float rowAdjusted = (row - boardNumRows/2.) * tileSize;
+        float colAdjusted = (col - boardNumCols/2.) * tileSize;
+        fill(r, g, b);
+        rect(colAdjusted, rowAdjusted, tileSize, tileSize);
+        if (isOccupied(row, col))
+            image(board[row][col].getPieceImage(), colAdjusted, rowAdjusted, tileSize, tileSize);
+    }
+    
+    void drawTile(int row, int col) {
+        if ((row % 2) == (col % 2))
+            drawTile(row, col, 240, 217, 181); //light color
+        else 
+            drawTile(row, col, 181, 136, 99); //dark color
+        /*if (isMouseOver())
+             draw(row, col, 255, 0, 0);*/
+    }
+
     void drawMoves() {
         ArrayList<Move> moves = new ArrayList<Move>();
-        if (selectedTile != null) {
-            moves = getMoves(selectedTile.getRow(), selectedTile.getCol());
+        if (selected.isValid()) {
+            moves = getMoves(selected.getRow(), selected.getCol());
         }/* else {
          for (int r = 0; r < boardNumRows; r++) {
          for (int c = 0; c < boardNumCols; c++) {
@@ -123,9 +171,10 @@ class Board {
          }
          }*/
         for (Move move : moves) {
-            Tile newPos = board[move.getFinalPosR()][move.getFinalPosC()];
-            if (newPos.isOccupied()) newPos.drawTile(0, 255, 0);
-            else newPos.drawTile(0, 255, 255);
+            int newRow = move.getFinalPosR();
+            int newCol = move.getFinalPosC();
+            if (isOccupied(newRow, newCol)) drawTile(newRow, newCol, 0, 255, 0);
+            else drawTile(newRow, newCol, 0, 255, 255);
         }
     }
 
@@ -134,9 +183,9 @@ class Board {
     }
 
     ArrayList<Move> getMoves(int r, int c) {
-        if (!board[r][c].isOccupied())
+        if (!isOccupied(r, c))
             return new ArrayList<Move>();
-        Piece p = board[r][c].getPiece();
+        Piece p = board[r][c];
         MoveStep[] moveSteps = p.getMoves();
         MoveStep[] captureSteps = p.getCaptures();
         ArrayList<Move> moves = new ArrayList<Move>();
@@ -154,11 +203,11 @@ class Board {
                 if (moveStep.isIntermediate()) { //Knight moves
                     continueMoves(validMoves, moveStep.getNextMove(), p, r, c, newRowMove, newColMove, capture);
                 } else if (inBounds(r + newRowMove, c + newColMove)) {
-                    if (!board[r+newRowMove][c+newColMove].isOccupied() && !capture) { //Move to empty space
+                    if (!isOccupied(r+newRowMove, c+newColMove) && !capture) { //Move to empty space
                         validMoves.add(new Move(r, c, newRowMove, newColMove));
                         continueMoves(validMoves, moveStep.getNextMove(), p, r, c, newRowMove, newColMove, capture);
-                    } else if (board[r+newRowMove][c+newColMove].isOccupied() && capture) {
-                        if (board[r+newRowMove][c+newColMove].getPiece().getPlayer() ^ p.getPlayer()) { //Move to opposing occupied space; stops movement
+                    } else if (isOccupied(r+newRowMove, c+newColMove) && capture) {
+                        if (board[r+newRowMove][c+newColMove].getPlayer() ^ p.getPlayer()) { //Move to opposing occupied space; stops movement
                             validMoves.add(new Move(r, c, newRowMove, newColMove));
                         }
                     } else if (capture) {
@@ -170,7 +219,7 @@ class Board {
         return validMoves;
     }
 
-    Move validTileMove(Tile start, Tile end) {
+    Move validMove(Position start, Position end) {
         //Returns the correct move from start to end if it exists, and null otherwise
         ArrayList<Move> moves = getMoves(start.getRow(), start.getCol());
         for (Move move : moves) {
@@ -181,31 +230,31 @@ class Board {
     }
 
     void makeMove(Move m) {
-        if (board[m.getFinalPosR()][m.getFinalPosC()].isOccupied())
+        if (isOccupied(m.getFinalPosR(), m.getFinalPosC()))
             removePiece(m.getFinalPosR(), m.getFinalPosC());
         Piece p = removePiece(m.getRow(), m.getCol());
         addPiece(m.getFinalPosR(), m.getFinalPosC(), p);
         p.moved();
 
-        selectedTile = null;
+        selected.clear(); 
         gameMoves.add(m);
         turn = !turn;
     }
 
     void selectTile() {
-        Tile t = getMouseOver();
-        if (selectedTile == null) {
-            if (t != null && t.isOccupied() && (turn == t.getPiece().getPlayer()))
-                selectedTile = t;
+        Position pos = getMouseOver();
+        if (!selected.isValid()) {
+            if (pos.isValid() && isOccupied(pos) && (turn == getPiece(pos).getPlayer()))
+                selected = pos;
         } else {
-            if (t == null || t == selectedTile) {
-                selectedTile = null;
-            } else if (t.isOccupied() && t.getPiece().getPlayer() == selectedTile.getPiece().getPlayer()) {
-                selectedTile = t;
+            if (!pos.isValid() || pos.equals(selected)) {
+                selected.clear();
+            } else if (isOccupied(pos) && getPiece(pos).getPlayer() == getPiece(selected).getPlayer()) {
+                selected = pos;
             } else {
-                Move m = validTileMove(selectedTile, t);
+                Move m = validMove(selected, pos);
                 if (m == null) 
-                    selectedTile = null;
+                    selected.clear();
                 else
                     makeMove(m);
             }
@@ -236,6 +285,7 @@ class Board {
             player = t;
             pieceImage = p;
         }
+        
 
         void moved() {
             moved = true;
@@ -275,7 +325,9 @@ class Board {
         }
         
         Pawn clonePiece () {
-            return new Pawn(player);
+            Pawn newPiece = new Pawn(player);
+            if (moved) newPiece.moved();
+            return newPiece;
         }
     }
 
@@ -296,7 +348,9 @@ class Board {
         }
         
         Bishop clonePiece () {
-            return new Bishop(player);
+            Bishop newPiece = new Bishop(player);
+            if (moved) newPiece.moved();
+            return newPiece;
         }
     }
 
@@ -319,7 +373,9 @@ class Board {
         }
         
         Knight clonePiece () {
-            return new Knight(player);
+            Knight newPiece = new Knight(player);
+            if (moved) newPiece.moved();
+            return newPiece;
         }
     }
 
@@ -340,7 +396,9 @@ class Board {
         }
         
         Rook clonePiece () {
-            return new Rook(player);
+            Rook newPiece = new Rook(player);
+            if (moved) newPiece.moved();
+            return newPiece;
         }
     }
 
@@ -369,7 +427,9 @@ class Board {
         }
         
         Queen clonePiece () {
-            return new Queen(player);
+            Queen newPiece = new Queen(player);
+            if (moved) newPiece.moved();
+            return newPiece;
         }
     }
 
@@ -390,7 +450,9 @@ class Board {
         }
         
         King clonePiece () {
-            return new King(player);
+            King newPiece = new King(player);
+            if (moved) newPiece.moved();
+            return newPiece;
         }
     }
 
@@ -421,7 +483,7 @@ class Board {
             exists = false;
         }
 
-        boolean isPosition() {
+        boolean isValid() {
             return exists;
         }
 
@@ -431,6 +493,14 @@ class Board {
 
         int getCol() {
             return col;
+        }
+        
+        boolean isSamePosition(int r, int c) {
+            return (row == r) && (col == c) && exists;
+        }
+        
+        boolean equals(Position pos) {
+            return (!exists && !pos.exists) || ((exists && pos.exists) && (row == pos.row) && (col == pos.col));
         }
 
         void setRow(int r) {
