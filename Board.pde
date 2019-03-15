@@ -182,6 +182,7 @@ class Board {
              }
         }*/
         for (Move move : moves) {
+<<<<<<< HEAD
             int newRow = move.getFinalPosR();
             int newCol = move.getFinalPosC();
             if (isOccupied(newRow, newCol)) drawTile(newRow, newCol, 0, 255, 0);
@@ -218,6 +219,20 @@ class Board {
     ArrayList<Move> getMoves(int r, int c) { 
         return null;
         //if (board[r][c].getPiece() != null); return null;
+=======
+            Tile newPos = board[move.getNewRow()][move.getNewCol()];
+            if (newPos.isOccupied()) newPos.drawTile(0, 255, 0);
+            else newPos.drawTile(0, 255, 255);
+        }
+    }
+
+    boolean inBounds(int r, int c) {
+        return (0 <= r && r < boardNumRows) && (0 <= c && c < boardNumCols);
+    }
+
+    ArrayList<Move> getMoves(int r, int c) {
+        if (board[r][c].getPiece() != null); return null;
+>>>>>>> a64efb3a7637e3b94f9dce6df2e33d0cb22516c7
     }
 
     Move validMove(Position start, Position end) {
@@ -231,10 +246,19 @@ class Board {
     }
 
     void makeMove(Move m) {
+<<<<<<< HEAD
         if (isOccupied(m.getFinalPosR(), m.getFinalPosC()))
             removePiece(m.getFinalPosR(), m.getFinalPosC());
         Piece p = removePiece(m.getRow(), m.getCol());
         addPiece(m.getFinalPosR(), m.getFinalPosC(), p);
+=======
+        if (board[m.getNewRow()][m.getNewCol()].isOccupied())
+            removePiece(m.getNewRow(), m.getNewCol());
+        Piece p = removePiece(m.getRow(), m.getCol());
+        p.setRow(m.getNewRow());
+        p.setCol(m.getNewCol());
+        addPiece(p);
+>>>>>>> a64efb3a7637e3b94f9dce6df2e33d0cb22516c7
         p.moved();
 
         selected.clear(); 
@@ -272,12 +296,117 @@ class Board {
         }
         board = tmp;
     }
+<<<<<<< HEAD
 
     /***********************************************/
     /***********************************************/
     /***********************************************/
 
     abstract class Piece {
+=======
+    
+    
+    /***********************************************/
+    /***********************************************/
+    /***********************************************/
+    class Tile {
+        int row, col;
+        float rowAdjusted, colAdjusted;
+        Piece currentPiece = null;
+        boolean impassable = false;
+    
+        Tile (int r, int c) {
+            row = r;
+            col = c;
+            adjustRowCol();
+        }
+    
+        Tile (int r, int c, boolean i) {
+            this(r, c);
+            impassable = i;
+        }
+    
+        int getRow() {
+            return row;
+        }
+    
+        int getCol() {
+            return col;
+        }
+    
+        Piece getPiece() {
+            return currentPiece;
+        }
+    
+        void adjustRowCol() {
+            rowAdjusted = (row - boardNumRows/2.) * tileSize;
+            colAdjusted = (col - boardNumCols/2.) * tileSize;
+        }
+    
+        void setLocation(int r, int c) {
+            row = r;
+            col = c;
+            adjustRowCol();
+            if (currentPiece != null) {
+                currentPiece.setRow(r);
+                currentPiece.setCol(c);
+            }
+        }
+    
+        boolean isOccupied () {
+            return currentPiece != null;
+        }
+    
+        void addPiece (Piece p) {
+            if (currentPiece != null) {
+                throw new RuntimeException("Trying to move piece to occupied space (" + row + ", " + col + ")\n");
+            }
+            currentPiece = p;
+        }
+    
+        Piece removePiece () {
+            if (currentPiece == null) {
+                throw new RuntimeException("Trying to move piece from unoccupied space (" + row + ", " + col + ")\n");
+            }
+            Piece p = currentPiece;
+            currentPiece = null;
+            return p;
+        }
+    
+    
+        boolean isMouseOver() {
+            return (colAdjusted <= mouseXAdjusted() && mouseXAdjusted() < colAdjusted + tileSize) 
+                && (rowAdjusted <= mouseYAdjusted() && mouseYAdjusted() < rowAdjusted + tileSize);
+        }
+    
+        void drawTile() {
+            if ((row % 2) == (col % 2))
+                fill(#f0d9b5); //light color
+            else 
+            fill(#b58863); //dark color
+            /*if (isMouseOver())
+             fill(255, 0, 0);*/
+            rect(colAdjusted, rowAdjusted, tileSize, tileSize);
+            if (currentPiece != null)
+                image(currentPiece.getPieceImage(), colAdjusted, rowAdjusted, tileSize, tileSize);
+        }
+    
+        void drawTile(int r, int g, int b) {
+            fill(r, g, b);
+            rect(colAdjusted, rowAdjusted, tileSize, tileSize);
+            if (currentPiece != null)
+                image(currentPiece.getPieceImage(), colAdjusted, rowAdjusted, tileSize, tileSize);
+        }
+    
+    /***********************************************/
+    /***********************************************/
+    /***********************************************/
+    
+         
+    }
+    class Piece {
+        int row, col, id;
+>>>>>>> a64efb3a7637e3b94f9dce6df2e33d0cb22516c7
         MoveStep[] moves, captures;
         boolean player, moved = false; //player == true: Player 1/white; player == false: Player 2/black
         PImage pieceImage;
@@ -307,6 +436,7 @@ class Board {
             return pieceImage;
         }
         
+<<<<<<< HEAD
         abstract Piece clonePiece ();
             
         ArrayList<Move> getMoves(int r, int c) {
@@ -323,11 +453,30 @@ class Board {
     
         ArrayList<Move> continueMoves(ArrayList<Move> validMoves, MoveStep[] moveSteps, Piece p, int r, int c, int rowMove, int colMove, boolean capture) { //capture == false: move; capture == true: capture
             if (moveSteps != null) {
+=======
+        ArrayList<Move> getMoves(int r, int c) {
+            if (!board[r][c].isOccupied())
+                return new ArrayList<Move>();
+            Piece p = board[r][c].getPiece();
+            MoveStep[] moveSteps = p.getMoves();
+            MoveStep[] captureSteps = p.getCaptures();
+            ArrayList<Move> moves = new ArrayList<Move>();
+            continueMoves(moves, moveSteps, p, 0, 0, false);
+            continueMoves(moves, captureSteps, p, 0, 0, true);
+            return moves;
+        }
+    
+        ArrayList<Move> continueMoves(ArrayList<Move> validMoves, MoveStep[] moveSteps, Piece p, int rowMove, int colMove, boolean capture) { //capture == false: move; capture == true: capture
+            if (moveSteps != null) {
+                int r = p.getRow();
+                int c = p.getCol();
+>>>>>>> a64efb3a7637e3b94f9dce6df2e33d0cb22516c7
                 for (MoveStep moveStep : moveSteps) {
                     int newRowMove = rowMove + moveStep.getRowStep()*(p.getPlayer()^flip?1:-1);
                     int newColMove = colMove + moveStep.getColStep()*(p.getPlayer()^flip?1:-1);
                     //Can check for duplicate moves here
                     if (moveStep.isIntermediate()) { //Knight moves
+<<<<<<< HEAD
                         continueMoves(validMoves, moveStep.getNextMove(), p, r, c, newRowMove, newColMove, capture);
                     } else if (inBounds(r + newRowMove, c + newColMove)) {
                         if (!isOccupied(r+newRowMove, c+newColMove) && !capture) { //Move to empty space
@@ -339,6 +488,19 @@ class Board {
                             }
                         } else if (capture) {
                             continueMoves(validMoves, moveStep.getNextMove(), p, r, c, newRowMove, newColMove, capture);
+=======
+                        continueMoves(validMoves, moveStep.getNextMove(), p, newRowMove, newColMove, capture);
+                    } else if (inBounds(r + newRowMove, c + newColMove)) {
+                        if (!board[r+newRowMove][c+newColMove].isOccupied() && !capture) { //Move to empty space
+                            validMoves.add(new Move(r, c, newRowMove, newColMove));
+                            continueMoves(validMoves, moveStep.getNextMove(), p, newRowMove, newColMove, capture);
+                        } else if (board[r+newRowMove][c+newColMove].isOccupied() && capture) {
+                            if (board[r+newRowMove][c+newColMove].getPiece().getPlayer() ^ p.getPlayer()) { //Move to opposing occupied space; stops movement
+                                validMoves.add(new Move(r, c, newRowMove, newColMove));
+                            }
+                        } else if (capture) {
+                            continueMoves(validMoves, moveStep.getNextMove(), p, newRowMove, newColMove, capture);
+>>>>>>> a64efb3a7637e3b94f9dce6df2e33d0cb22516c7
                         }
                     }
                 }
@@ -630,4 +792,8 @@ class Board {
             next = m;
         }
     }
+<<<<<<< HEAD
+=======
+    
+>>>>>>> a64efb3a7637e3b94f9dce6df2e33d0cb22516c7
 }
