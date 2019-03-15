@@ -560,6 +560,22 @@ class Board {
         }
     }
     
+    
+    class King extends Piece {
+        King (int r, int c, boolean t) {
+            super (r, c, t, loadImage(t?"ChessPieces/whiteKing.png":"ChessPieces/blackKing.png"));
+            MoveStep m1 = new MoveStep(1, 1);
+            MoveStep m2 = new MoveStep(1, -1);
+            MoveStep m3 = new MoveStep(-1, 1);
+            MoveStep m4 = new MoveStep(-1, -1);
+            MoveStep m5 = new MoveStep(1, 0);
+            MoveStep m6 = new MoveStep(-1, 0);
+            MoveStep m7 = new MoveStep(0, 1);
+            MoveStep m8 = new MoveStep(0, -1);
+            moves = new MoveStep[] {m1, m2, m3, m4, m5, m6, m7, m8};
+            captures = new MoveStep[] {m1, m2, m3, m4, m5, m6, m7, m8};
+        }
+    }
     /***********************************************/
     /***********************************************/
     /***********************************************/
@@ -600,5 +616,18 @@ class Board {
             return newRow;
         }
         
+        void setNew(int r, int c) {
+            newRow = r;
+            newCol = c;
+        }
+        
+        void setCaptured(int r, int c) {
+            capturedRow = r;
+            capturedCol = c;
+        }
+        
+        void setNextMove(Move m) {
+            next = m;
+        }
     }
 }
