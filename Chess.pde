@@ -9,7 +9,7 @@ void setup () {
     strokeWeight(0);
     tileSize = (int)(height/numRows*.9);
     board = new Board(numRows, numCols, tileSize);
-    board.addPiece(new Rook(0, 0, false));
+    board.addPiece(board.new Rook(0, 0, false));
     board.addPiece(board.new Knight(0, 1, false));
     board.addPiece(board.new Bishop(0, 2, false));
     board.addPiece(board.new Queen(0, 3, false));
