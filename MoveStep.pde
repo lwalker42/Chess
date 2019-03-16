@@ -7,18 +7,17 @@ class MoveStep {
         rowStep = r;
         colStep = c;
     }
-
-    MoveStep (int r, int c, boolean m) {
-        this(r, c);
-        intermediateStep = m;
-    }
-
+    
     int getRowStep() {
         return rowStep;
     }
 
     int getColStep() {
         return colStep;
+    }
+    
+    void setIntermediate(boolean m) {
+        intermediateStep = m;
     }
 
     boolean isIntermediate() {

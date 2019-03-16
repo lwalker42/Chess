@@ -35,8 +35,7 @@ void setup () {
 void draw () {
     background(175);
     translate(width/2, height/2);
-    board.drawBoard();
-    board.drawMoves();
+    board.drawBoard(); //<>// //<>//
 }
 
 float mouseXAdjusted() {
@@ -49,7 +48,7 @@ float mouseYAdjusted() {
 
 void keyPressed() { 
     if (key == ' ') board.flip();
-    board.resetBoard();
+    //board.resetBoard();
 }
 
 void mousePressed() { 
