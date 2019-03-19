@@ -38,14 +38,6 @@ void draw () {
     board.drawBoard();
 }
 
-float mouseXAdjusted() {
-    return mouseX - width/2.;
-}
-
-float mouseYAdjusted() {
-    return mouseY - height/2.;
-}
-
 void keyPressed() { 
     if (key == ' ') board.flip();
     else if (key == 'r') board.resetBoard();

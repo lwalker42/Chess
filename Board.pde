@@ -130,10 +130,12 @@ class Board {
     }
 
     boolean isMouseOver(int row, int col) {
-        float rowAdjusted = (row - boardNumRows/2.) * tileSize;
-        float colAdjusted = (col - boardNumCols/2.) * tileSize;
-        return (colAdjusted <= mouseXAdjusted() && mouseXAdjusted() < colAdjusted + tileSize) 
-            && (rowAdjusted <= mouseYAdjusted() && mouseYAdjusted() < rowAdjusted + tileSize);
+        float mouseXAdjusted =  mouseX - width/2.;
+        float mouseYAdjusted =  mouseY - height/2.;
+        float rowAdjusted = flip?(boardNumRows/2. - row - 1) * tileSize:(row - boardNumRows/2.) * tileSize;
+        float colAdjusted = flip?(boardNumCols/2. - col - 1) * tileSize:(col - boardNumCols/2.) * tileSize;
+        return (colAdjusted <= mouseXAdjusted && mouseXAdjusted < colAdjusted + tileSize) 
+            && (rowAdjusted <= mouseYAdjusted && mouseYAdjusted < rowAdjusted + tileSize);
     }
 
     void drawBoard() {
@@ -155,8 +157,8 @@ class Board {
     }
 
     void drawTile(int row, int col, int r, int g, int b) {
-        float rowAdjusted = (row - boardNumRows/2.) * tileSize;
-        float colAdjusted = (col - boardNumCols/2.) * tileSize;
+        float rowAdjusted = flip?(boardNumRows/2. - row - 1) * tileSize:(row - boardNumRows/2.) * tileSize;
+        float colAdjusted = flip?(boardNumCols/2. - col - 1) * tileSize:(col - boardNumCols/2.) * tileSize;
         fill(r, g, b);
         rect(colAdjusted, rowAdjusted, tileSize, tileSize);
         if (isOccupied(row, col))
@@ -271,13 +273,6 @@ class Board {
 
     void flip() {
         flip = !flip;
-        Piece[][] tmp = new Piece[boardNumRows][boardNumCols];
-        for (int r = 0; r < boardNumRows; r++) {
-            for (int c = 0; c < boardNumCols; c++) {
-                tmp[r][c] = board[boardNumRows-r-1][boardNumCols-c-1];
-            }
-        }
-        board = tmp;
     }
 
     /***********************************************/
@@ -285,9 +280,9 @@ class Board {
     /***********************************************/
 
     abstract class Piece {
-        MoveStep[] moves, captures;
-        boolean player, moved = false; //player == true: Player 1/white; player == false: Player 2/black
-        PImage pieceImage;
+        protected MoveStep[] moves, captures;
+        protected boolean player, moved = false; //player == true: Player 1/white; player == false: Player 2/black
+        protected PImage pieceImage;
 
         Piece (boolean p, PImage i) {
             player = p;
@@ -342,7 +337,7 @@ class Board {
             //print("Piece: "+getClass()+", row: "+start.getRow()+", col: "+start.getCol()+", newRow: "+end.getRow()+", newCol: "+end.getCol()+"\n");
             if (moveSteps != null) {
                 for (MoveStep moveStep : moveSteps) {
-                    int dir = player^flip?1:-1;
+                    int dir = player?1:-1;
                     Position newEnd = end.clonePosition();
                     newEnd.incrementPosition(moveStep.getRowStep()*dir, moveStep.getColStep()*dir);
                     //Can check for duplicate moves here
@@ -387,7 +382,7 @@ class Board {
         }
 
         ArrayList<Move> getMoves(Position pos) {
-            MoveStep[] normalMoves = moves;
+            MoveStep[] normalMoveSteps = moves;
             if (!moved) {
                 MoveStep m1 = new MoveStep(-1, 0);
                 MoveStep m2 = new MoveStep(-1, 0);
@@ -395,7 +390,29 @@ class Board {
                 moves = new MoveStep[] {m1};
             }
             ArrayList<Move> possibleMoves = super.getMoves(pos);
-            moves = normalMoves;
+            moves = normalMoveSteps;
+         
+            if (!gameMoves.isEmpty()) {
+                int r = pos.getRow();
+                int c = pos.getCol();
+                int dir = player?1:-1;
+                Move prev = gameMoves.get(gameMoves.size() - 1);
+                Piece left = inBounds(r, c - 1)?Board.this.board[r][c-1]:null;
+                Piece right = inBounds(r, c + 1)?Board.this.board[r][c+1]:null;
+                if (left != null && left instanceof Pawn && (left.getPlayer() ^ player) && prev.getStart().equals(r - 2 * dir, c - 1) && prev.getEnd().equals(r, c - 1)) {
+                    Move enP = new Move(r, c, r - dir, c - 1);
+                    enP.setNewPiece(this);
+                    enP.setCaptured(r, c - 1);
+                    possibleMoves.add(enP);
+                } else if (right != null && right instanceof Pawn && (right.getPlayer() ^ player) && prev.getStart().equals(r - 2 * dir, c + 1) && prev.getEnd().equals(r, c + 1)) {
+                    Move enP = new Move(r, c, r - dir, c + 1);
+                    enP.setNewPiece(this);
+                    enP.setCaptured(r, c + 1);
+                    possibleMoves.add(enP);
+                }
+                    
+            }
+            
             return possibleMoves;
         }
     }
