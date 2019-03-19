@@ -1,11 +1,11 @@
 import java.util.Iterator;
 
 class Board {
-    int boardNumRows, boardNumCols, tileSize;
-    boolean flip, turn, whiteCheck, blackCheck;
-    Position selected;
-    Piece[][] board, initBoard;
-    ArrayList<Move> gameMoves;
+    private int boardNumRows, boardNumCols, tileSize;
+    private boolean flip, turn, whiteCheck, blackCheck;
+    private Position selected;
+    private Piece[][] board, initBoard;
+    private ArrayList<Move> gameMoves;
 
     Board (int rows, int cols, int tile) {
         boardNumRows = rows;
@@ -33,7 +33,11 @@ class Board {
         for (int r = 0; r < boardNumRows; r++) {
             for (int c = 0; c < boardNumCols; c++) {
                 Piece p = newBoard.clonePiece(board, r, c); //<>//
+                if (p != null)
+                    p.setBoard(newBoard);
                 Piece initP = newBoard.clonePiece(initBoard, r, c);
+                if (initP != null)
+                    initP.setBoard(newBoard);
                 newBoard.board[r][c] = p;
                 newBoard.initBoard[r][c] = initP;
             }
@@ -45,7 +49,7 @@ class Board {
         if (b[r][c] == null) 
             return null;
         else
-            return b[r][c].clonePiece(this);
+            return b[r][c].clonePiece();
     }
 
     void initBoard() {
@@ -81,17 +85,24 @@ class Board {
         assert pos.isValid() : "invalid position";
         return board[pos.getRow()][pos.getCol()] != null;
     }
+    
+    Piece getPiece(int row, int col) {
+        assert inBounds(row, col) : "Out of bounds";
+        return board[row][col];
+    }
 
     Piece getPiece(Position pos) {
         assert pos.isValid() : "invalid position";
-        return board[pos.getRow()][pos.getCol()];
+        return getPiece(pos.getRow(), pos.getCol());
     }
 
     void addPiece(int row, int col, Piece p) {
         if (isOccupied(row, col))
             throw new RuntimeException("Trying to move piece to occupied space (" + row + ", " + col + ")\n");
-        else
+        else {
             board[row][col] = p;
+            p.setBoard(this);
+        }
     }
 
     void addPiece(Position pos, Piece p) {
@@ -106,6 +117,7 @@ class Board {
         else {
             Piece p = board[row][col];
             board[row][col] = null;
+            p.setBoard(null);
             return p;
         }
     }
@@ -273,423 +285,5 @@ class Board {
 
     void flip() {
         flip = !flip;
-    }
-
-    /***********************************************/
-    /***********************************************/
-    /***********************************************/
-
-    abstract class Piece {
-        protected MoveStep[] moves, captures;
-        protected boolean player, moved = false; //player == true: Player 1/white; player == false: Player 2/black
-        protected PImage pieceImage;
-
-        Piece (boolean p, PImage i) {
-            player = p;
-            pieceImage = i;
-        }
-
-        void moved() {
-            moved = true;
-        }
-
-        MoveStep[] getMoves () {
-            return moves;
-        }
-
-        MoveStep[] getCaptures () {
-            return captures;
-        }
-
-        boolean getPlayer () {
-            return player;
-        }
-
-        PImage getPieceImage() {
-            return pieceImage;
-        }
-
-        abstract Piece clonePiece (Board b);
-
-        ArrayList<Move> getValidMoves(Position pos) {
-                ArrayList<Move> moves = getMoves(pos); //<>//
-            for (Iterator<Move> iterator = moves.iterator(); iterator.hasNext(); ) {
-                Move move = iterator.next();
-                Board temp = cloneBoard();
-                temp.makeMove(move);
-                if (temp.inCheck(player)) {
-                    iterator.remove();
-                }
-            }
-            return moves;
-        }
-
-        ArrayList<Move> getMoves(Position pos) {
-                if (!isOccupied(pos))
-                return new ArrayList<Move>();
-            ArrayList<Move> possibleMoves = new ArrayList<Move>();
-            continueMoves(possibleMoves, moves, pos, pos.clonePosition(), false);
-            continueMoves(possibleMoves, captures, pos, pos.clonePosition(), true);
-            return possibleMoves;
-        }
-
-        void continueMoves(ArrayList<Move> possibleMoves, MoveStep[] moveSteps, Position start, Position end, boolean capture) { //capture == false: move; capture == true: capture
-            //print("Piece: "+getClass()+", row: "+start.getRow()+", col: "+start.getCol()+", newRow: "+end.getRow()+", newCol: "+end.getCol()+"\n");
-            if (moveSteps != null) {
-                for (MoveStep moveStep : moveSteps) {
-                    int dir = player?1:-1;
-                    Position newEnd = end.clonePosition();
-                    newEnd.incrementPosition(moveStep.getRowStep()*dir, moveStep.getColStep()*dir);
-                    //Can check for duplicate moves here
-                    if (moveStep.isIntermediate()) { //Knight moves
-                        continueMoves(possibleMoves, moveStep.getNextMove(), start, newEnd, capture);
-                    } else if (inBounds(newEnd)) {
-                        if (!isOccupied(newEnd) && !capture) { //Move to empty space
-                            Move move = new Move(start, newEnd);
-                            move.setNewPiece(this);
-                            possibleMoves.add(move);
-                            continueMoves(possibleMoves, moveStep.getNextMove(), start, newEnd, capture);
-                        } else if (isOccupied(newEnd) && capture) {
-                            if (getPiece(newEnd).getPlayer() ^ player) { //Move to opposing occupied space; stops movement
-                                Move move = new Move(start, newEnd);
-                                move.setNewPiece(this);
-                                move.setCaptured(newEnd);
-                                possibleMoves.add(move);
-                            }
-                        } else if (capture) {
-                            continueMoves(possibleMoves, moveStep.getNextMove(), start, newEnd, capture);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    class Pawn extends Piece {
-        Pawn (boolean p) {
-            super (p, loadImage(p?"ChessPieces/whitePawn.png":"ChessPieces/blackPawn.png"));
-            MoveStep m1 = new MoveStep(-1, 0);
-            MoveStep m2 = new MoveStep(-1, -1);
-            MoveStep m3 = new MoveStep(-1, 1);
-            moves = new MoveStep[] {m1};
-            captures = new MoveStep[] {m2, m3};
-        }
-
-        Pawn clonePiece (Board b) {
-            Pawn newPiece = b.new Pawn(player);
-            if (moved) newPiece.moved();
-            return newPiece;
-        }
-
-        ArrayList<Move> getMoves(Position pos) {
-            MoveStep[] normalMoveSteps = moves;
-            if (!moved) {
-                MoveStep m1 = new MoveStep(-1, 0);
-                MoveStep m2 = new MoveStep(-1, 0);
-                m1.setNextMove(m2);
-                moves = new MoveStep[] {m1};
-            }
-            ArrayList<Move> possibleMoves = super.getMoves(pos);
-            moves = normalMoveSteps;
-         
-            if (!gameMoves.isEmpty()) {
-                int r = pos.getRow();
-                int c = pos.getCol();
-                int dir = player?1:-1;
-                Move prev = gameMoves.get(gameMoves.size() - 1);
-                Piece left = inBounds(r, c - 1)?Board.this.board[r][c-1]:null;
-                Piece right = inBounds(r, c + 1)?Board.this.board[r][c+1]:null;
-                if (left != null && left instanceof Pawn && (left.getPlayer() ^ player) && prev.getStart().equals(r - 2 * dir, c - 1) && prev.getEnd().equals(r, c - 1)) {
-                    Move enP = new Move(r, c, r - dir, c - 1);
-                    enP.setNewPiece(this);
-                    enP.setCaptured(r, c - 1);
-                    possibleMoves.add(enP);
-                } else if (right != null && right instanceof Pawn && (right.getPlayer() ^ player) && prev.getStart().equals(r - 2 * dir, c + 1) && prev.getEnd().equals(r, c + 1)) {
-                    Move enP = new Move(r, c, r - dir, c + 1);
-                    enP.setNewPiece(this);
-                    enP.setCaptured(r, c + 1);
-                    possibleMoves.add(enP);
-                }
-                    
-            }
-            
-            return possibleMoves;
-        }
-    }
-
-
-    class Bishop extends Piece {
-        Bishop (boolean p) {
-            super (p, loadImage(p?"ChessPieces/whiteBishop.png":"ChessPieces/blackBishop.png"));
-            MoveStep m1 = new MoveStep(1, 1);
-            MoveStep m2 = new MoveStep(1, -1);
-            MoveStep m3 = new MoveStep(-1, 1);
-            MoveStep m4 = new MoveStep(-1, -1);
-            m1.setNextMove(m1);
-            m2.setNextMove(m2);
-            m3.setNextMove(m3);
-            m4.setNextMove(m4);
-            moves = new MoveStep[] {m1, m2, m3, m4};
-            captures = new MoveStep[] {m1, m2, m3, m4};
-        }
-
-        Bishop clonePiece (Board b) {
-            Bishop newPiece = b.new Bishop(player);
-            if (moved) newPiece.moved();
-            return newPiece;
-        }
-    }
-
-
-    class Knight extends Piece { //Can also explicitly specify Knight moves as (2, 1) without intermediate steps 
-        Knight (boolean p) {
-            super (p, loadImage(p?"ChessPieces/whiteKnight.png":"ChessPieces/blackKnight.png"));
-            MoveStep m1 = new MoveStep(2, 0);
-            MoveStep m2 = new MoveStep(-2, 0);
-            MoveStep m3 = new MoveStep(0, 2);
-            MoveStep m4 = new MoveStep(0, -2);
-            m1.setIntermediate(true);
-            m2.setIntermediate(true);
-            m3.setIntermediate(true);
-            m4.setIntermediate(true);
-            MoveStep[] m5 = new MoveStep[] {new MoveStep(0, 1), new MoveStep(0, -1)};
-            MoveStep[] m6 = new MoveStep[] {new MoveStep(1, 0), new MoveStep(-1, 0)};
-            m1.setNextMove(m5);
-            m2.setNextMove(m5);
-            m3.setNextMove(m6);
-            m4.setNextMove(m6);
-            moves = new MoveStep[] {m1, m2, m3, m4};
-            captures = new MoveStep[] {m1, m2, m3, m4};
-        }
-
-        Knight clonePiece (Board b) {
-            Knight newPiece = b.new Knight(player);
-            if (moved) newPiece.moved();
-            return newPiece;
-        }
-    }
-
-
-    class Rook extends Piece {
-        Rook (boolean p) {
-            super (p, loadImage(p?"ChessPieces/whiteRook.png":"ChessPieces/blackRook.png"));
-            MoveStep m1 = new MoveStep(1, 0);
-            MoveStep m2 = new MoveStep(-1, 0);
-            MoveStep m3 = new MoveStep(0, 1);
-            MoveStep m4 = new MoveStep(0, -1);
-            m1.setNextMove(m1);
-            m2.setNextMove(m2);
-            m3.setNextMove(m3);
-            m4.setNextMove(m4);
-            moves = new MoveStep[] {m1, m2, m3, m4};
-            captures = new MoveStep[] {m1, m2, m3, m4};
-        }
-
-        Rook clonePiece (Board b) {
-            Rook newPiece = b.new Rook(player);
-            if (moved) newPiece.moved();
-            return newPiece;
-        }
-    }
-
-
-    class Queen extends Piece {
-        Queen (boolean p) {
-            super (p, loadImage(p?"ChessPieces/whiteQueen.png":"ChessPieces/blackQueen.png"));
-            MoveStep m1 = new MoveStep(1, 1);
-            MoveStep m2 = new MoveStep(1, -1);
-            MoveStep m3 = new MoveStep(-1, 1);
-            MoveStep m4 = new MoveStep(-1, -1);
-            MoveStep m5 = new MoveStep(1, 0);
-            MoveStep m6 = new MoveStep(-1, 0);
-            MoveStep m7 = new MoveStep(0, 1);
-            MoveStep m8 = new MoveStep(0, -1);
-            m1.setNextMove(m1);
-            m2.setNextMove(m2);
-            m3.setNextMove(m3);
-            m4.setNextMove(m4);
-            m5.setNextMove(m5);
-            m6.setNextMove(m6);
-            m7.setNextMove(m7);
-            m8.setNextMove(m8);
-            moves = new MoveStep[] {m1, m2, m3, m4, m5, m6, m7, m8};
-            captures = new MoveStep[] {m1, m2, m3, m4, m5, m6, m7, m8};
-        }
-
-        Queen clonePiece (Board b) {
-            Queen newPiece = b.new Queen(player);
-            if (moved) newPiece.moved();
-            return newPiece;
-        }
-    }
-
-
-    class King extends Piece {
-        King (boolean p) {
-            super (p, loadImage(p?"ChessPieces/whiteKing.png":"ChessPieces/blackKing.png"));
-            MoveStep m1 = new MoveStep(1, 1);
-            MoveStep m2 = new MoveStep(1, -1);
-            MoveStep m3 = new MoveStep(-1, 1);
-            MoveStep m4 = new MoveStep(-1, -1);
-            MoveStep m5 = new MoveStep(1, 0);
-            MoveStep m6 = new MoveStep(-1, 0);
-            MoveStep m7 = new MoveStep(0, 1);
-            MoveStep m8 = new MoveStep(0, -1);
-            moves = new MoveStep[] {m1, m2, m3, m4, m5, m6, m7, m8};
-            captures = new MoveStep[] {m1, m2, m3, m4, m5, m6, m7, m8};
-        }
-
-        King clonePiece (Board b) {
-            King newPiece = b.new King(player);
-            if (moved) newPiece.moved();
-            return newPiece;
-        }
-    }
-
-    /***********************************************/
-    /***********************************************/
-    /***********************************************/
-
-    class Move {
-        Position start, end, captured;
-        Piece newPiece = null; //defaults to old piece
-        Move next = null;
-
-        Move (int r, int c, int newR, int newC) {
-            start = new Position(r, c);
-            end = new Position(newR, newC);
-            captured = new Position();
-        }
-
-        Move (Position start, Position end) {
-            this(start.getRow(), start.getCol(), end.getRow(), end.getCol());
-        }
-
-        Position getStart () {
-            return start;
-        }
-
-        Position getEnd () {
-            return end;
-        }
-
-        Position getCaptured () {
-            return captured;
-        }
-
-        Piece getNewPiece() {
-            return newPiece;
-        }
-        
-        Move getNextMove() {
-            return next;
-        }
-
-        void setStart(int r, int c) {
-            start.setPosition(r, c);
-        }
-
-        void setEnd(int r, int c) {
-            end.setPosition(r, c);
-        }
-
-        void setCaptured(int r, int c) {
-            captured.setPosition(r, c);
-        }
-
-        void setCaptured(Position pos) {
-            captured = pos.clonePosition();
-        }
-
-        void setNewPiece(Piece p) {
-            newPiece = p.clonePiece(Board.this);
-        }
-
-        void setNextMove(Move m) {
-            next = m;
-        }
-    }
-
-    /***********************************************/
-    /***********************************************/
-    /***********************************************/
-
-    class Position {
-        boolean exists;
-        int row, col;
-
-        Position (int r, int c, boolean e) {
-            row = r;
-            col = c;
-            exists = e;
-        }
-
-        Position (int r, int c) {
-            this(r, c, true);
-        }
-
-        Position () {
-            exists = false;
-        }
-
-        Position clonePosition () {
-            return new Position (row, col, exists);
-        }
-
-        void clear() {
-            exists = false;
-        }
-
-        boolean isValid() {
-            return exists;
-        }
-
-        int getRow() {
-            return row;
-        }
-
-        int getCol() {
-            return col;
-        }
-
-        boolean equals(int r, int c) {
-            return (row == r) && (col == c) && exists;
-        }
-
-        boolean equals(Position pos) {
-            return (!exists && !pos.exists) || ((exists && pos.exists) && (row == pos.row) && (col == pos.col));
-        }
-
-        void setRow(int r) {
-        assert 0 <= r && r < boardNumRows && exists: 
-            "Position out of bounds";
-            row = r;
-            exists = true;
-        }
-
-        void setCol(int c) {
-        assert exists && 0 <= c && c < boardNumCols: 
-            "Position out of bounds";
-            col = c;
-            exists = true;
-        }
-
-        void setPosition(int r, int c) {
-        assert 0 <= r && r < boardNumRows && 0 <= c && c < boardNumCols: 
-            "Position out of bounds";
-            row = r;
-            col = c;
-            exists = true;
-        }
-
-        void incrementPosition(int r, int c) {
-            //assert exists && 0 <= row + r && row + r < boardNumRows && 0 <= col + c && col + c < boardNumCols: "Position out of bounds";
-            row += r;
-            col += c;
-        }
-
-        void incrementPosition(MoveStep ms) {
-            incrementPosition(ms.getRowStep(), ms.getColStep());
-        }
-    }
+    } //<>//
 }
