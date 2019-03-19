@@ -32,7 +32,7 @@ class Board {
             newBoard.gameMoves.add(move); //need to clone move
         for (int r = 0; r < boardNumRows; r++) {
             for (int c = 0; c < boardNumCols; c++) {
-                Piece p = newBoard.clonePiece(board, r, c); //<>//
+                Piece p = newBoard.clonePiece(board, r, c);
                 if (p != null)
                     p.setBoard(newBoard);
                 Piece initP = newBoard.clonePiece(initBoard, r, c);
@@ -95,13 +95,24 @@ class Board {
         assert pos.isValid() : "invalid position";
         return getPiece(pos.getRow(), pos.getCol());
     }
+    
+    Piece getInitPiece(int row, int col) {
+        assert inBounds(row, col) : "Out of bounds";
+        return initBoard[row][col];
+    }
 
+    Piece getInitPiece(Position pos) {
+        assert pos.isValid() : "invalid position";
+        return getPiece(pos.getRow(), pos.getCol());
+    }
+    
     void addPiece(int row, int col, Piece p) {
         if (isOccupied(row, col))
             throw new RuntimeException("Trying to move piece to occupied space (" + row + ", " + col + ")\n");
         else {
             board[row][col] = p;
-            p.setBoard(this);
+            if (p != null)
+                p.setBoard(this);
         }
     }
 
@@ -207,7 +218,7 @@ class Board {
         for (int r = 0; r < boardNumRows; r++) {
             for (int c = 0; c < boardNumCols; c++) {
                 if (isOccupied(r, c) && board[r][c].getPlayer() ^ player) {
-                    ArrayList<Move> moves = getMoves(r, c);
+                    ArrayList<Move> moves = getMoves(r, c, true);
                     for (Move move : moves) {
                         if (move.getCaptured().isValid() && isOccupied(move.getCaptured())) {
                             Piece capturedPiece = getPiece(move.getCaptured());
@@ -230,18 +241,18 @@ class Board {
         return getPiece(pos).getValidMoves(pos);
     }
 
-    ArrayList<Move> getMoves(int r, int c) {
+    ArrayList<Move> getMoves(int r, int c, boolean capture) {
         Position pos = new Position(r, c);
-        return getMoves(pos);
+        return getMoves(pos, capture);
     }
 
-    ArrayList<Move> getMoves(Position pos) {
-        return getPiece(pos).getMoves(pos);
+    ArrayList<Move> getMoves(Position pos, boolean capture) {
+        return getPiece(pos).getMoves(pos, capture);
     }
 
     void makeMove(Move m) {
         for (; m != null; m = m.getNextMove()) {
-            if (m.getCaptured().isValid())
+            if (m.getCaptured().isValid() && isOccupied(m.getCaptured()))
                 removePiece(m.getCaptured());
             removePiece(m.getStart());
             addPiece(m.getEnd(), m.getNewPiece());
@@ -285,5 +296,5 @@ class Board {
 
     void flip() {
         flip = !flip;
-    } //<>//
+    }
 }

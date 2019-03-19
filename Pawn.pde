@@ -14,7 +14,7 @@ class Pawn extends Piece {
             return newPiece;
         }
 
-        ArrayList<Move> getMoves(Position pos) {
+        ArrayList<Move> getMoves(Position pos, boolean capture) {
             MoveStep[] normalMoveSteps = moves;
             if (!moved) {
                 MoveStep m1 = new MoveStep(-1, 0);
@@ -22,10 +22,10 @@ class Pawn extends Piece {
                 m1.setNextMove(m2);
                 moves = new MoveStep[] {m1};
             }
-            ArrayList<Move> possibleMoves = super.getMoves(pos);
+            ArrayList<Move> possibleMoves = super.getMoves(pos, capture);
             moves = normalMoveSteps;
          
-            if (board != null && !board.gameMoves.isEmpty()) {
+            if (capture && board != null && !board.gameMoves.isEmpty()) {
                 int r = pos.getRow();
                 int c = pos.getCol();
                 int dir = player?1:-1;

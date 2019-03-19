@@ -41,24 +41,22 @@ abstract class Piece {
     abstract Piece clonePiece ();
 
     ArrayList<Move> getValidMoves(Position pos) {
-            ArrayList<Move> moves = getMoves(pos);
+            ArrayList<Move> moves = getMoves(pos, false);
+            moves.addAll(getMoves(pos, true));
         for (Iterator<Move> iterator = moves.iterator(); iterator.hasNext(); ) {
             Move move = iterator.next();
-            Board temp = board.cloneBoard();
-            temp.makeMove(move);
-            if (temp.inCheck(player)) {
+            if (board.tryMove(move).inCheck(player)) {
                 iterator.remove();
             }
         }
         return moves;
     }
 
-    ArrayList<Move> getMoves(Position pos) {
-            if (!board.isOccupied(pos))
-            return new ArrayList<Move>();
+    ArrayList<Move> getMoves(Position pos, boolean capture) {
         ArrayList<Move> possibleMoves = new ArrayList<Move>();
-        continueMoves(possibleMoves, moves, pos, pos.clonePosition(), false);
-        continueMoves(possibleMoves, captures, pos, pos.clonePosition(), true);
+            if (!board.isOccupied(pos))
+            return possibleMoves;
+        continueMoves(possibleMoves, moves, pos, pos.clonePosition(), capture);
         return possibleMoves;
     }
 
