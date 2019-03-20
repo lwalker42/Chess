@@ -45,7 +45,6 @@ abstract class Piece {
             moves.addAll(getMoves(pos, false));
         for (Iterator<Move> iterator = moves.iterator(); iterator.hasNext(); ) {
             Move move = iterator.next();
-            print ("row: " + move.getEnd().getRow() + ", col: " + move.getEnd().getCol() + "\n");
             if (board.tryMove(move).inCheck(player)) {
                 iterator.remove();
             }
@@ -62,7 +61,6 @@ abstract class Piece {
     }
 
     void continueMoves(ArrayList<Move> possibleMoves, MoveStep[] moveSteps, Position start, Position end, boolean capture) { //capture == false: move; capture == true: capture
-        //print("Piece: "+getClass()+", row: "+start.getRow()+", col: "+start.getCol()+", newRow: "+end.getRow()+", newCol: "+end.getCol()+"\n");
         if (moveSteps != null) {
             for (MoveStep moveStep : moveSteps) {
                 int dir = player?1:-1;

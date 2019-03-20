@@ -41,7 +41,6 @@ class King extends Piece {
                             if (col == k) continue;
                             if (!board.isOccupied(row, k) || board.getPiece(row, k) == this || board.getPiece(row, k) == p){
                                 Move m = new Move(row, col, row, k);
-                                //print("row: " + row + ", col: " + col + ", row: " + row + ", k: " + k + "\n");
                                 m.setNewPiece(this);
                                 m.setCaptured(row, k);
                                 if (board.tryMove(m).inCheck(player)) {
