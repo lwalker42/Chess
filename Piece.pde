@@ -57,7 +57,7 @@ abstract class Piece {
         ArrayList<Move> possibleMoves = new ArrayList<Move>();
             if (!board.isOccupied(pos))
             return possibleMoves;
-        continueMoves(possibleMoves, moves, pos, pos.clonePosition(), capture);
+        continueMoves(possibleMoves, capture?captures:moves, pos, pos.clonePosition(), capture);
         return possibleMoves;
     }
 
