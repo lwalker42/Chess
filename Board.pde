@@ -254,7 +254,8 @@ class Board {
         for (; m != null; m = m.getNextMove()) {
             if (m.getCaptured().isValid() && isOccupied(m.getCaptured()))
                 removePiece(m.getCaptured());
-            removePiece(m.getStart());
+            if (isOccupied(m.getStart()))
+                removePiece(m.getStart());
             addPiece(m.getEnd(), m.getNewPiece());
             getPiece(m.getEnd()).moved(); 
             gameMoves.add(m);
@@ -282,14 +283,14 @@ class Board {
         } else {
             if (!pos.isValid() || pos.equals(selected)) {
                 selected.clear();
-            } else if (isOccupied(pos) && getPiece(pos).getPlayer() == getPiece(selected).getPlayer()) {
-                selected = pos;
             } else {
                 Move m = getValidMove(selected, pos);
-                if (m == null) 
-                    selected.clear();
-                else
+                if (m != null)
                     makeMove(m);
+                else if (isOccupied(pos) && getPiece(pos).getPlayer() == getPiece(selected).getPlayer())
+                    selected = pos;
+                else
+                    selected.clear();
             }
         }
     }

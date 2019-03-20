@@ -65,6 +65,7 @@ class King extends Piece {
                         if (clear) {
                             Move mK = new Move(row, col, row, board.boardNumCols/2 + (left?-2:2));
                             mK.setNewPiece(this);
+                            mK.setCaptured(row, c);
                             Move mR = new Move(row, c, row, board.boardNumCols/2 + (left?-1:1));
                             mR.setNewPiece(p);
                             mK.setNextMove(mR);
