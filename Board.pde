@@ -31,8 +31,14 @@ class Board {
         newBoard.whiteCheck = whiteCheck;
         newBoard.blackCheck = blackCheck;
         newBoard.selected = selected.clonePosition();
+        
         for (Move move : gameMoves)
             newBoard.gameMoves.add(move); //need to clone move
+        if (selectedMoves != null) {
+            for (Move move : selectedMoves)
+                newBoard.selectedMoves.add(move);
+        }
+            
         for (int r = 0; r < boardNumRows; r++) {
             for (int c = 0; c < boardNumCols; c++) {
                 Piece p = newBoard.clonePiece(board, r, c);
