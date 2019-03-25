@@ -4,8 +4,9 @@ int tileSize = 120;
 Board chessBoard;
 
 void setup () {
-    fullScreen();
+    //fullScreen();
     //size(1280, 720);
+    size(480, 360);
     strokeWeight(0);
     tileSize = (int)(height/numRows*.9);
     chessBoard = new Board(numRows, numCols, tileSize);

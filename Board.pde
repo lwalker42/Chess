@@ -4,8 +4,10 @@ class Board {
     private int boardNumRows, boardNumCols, tileSize;
     private boolean flip, turn, whiteCheck, blackCheck;
     private Position selected;
+
     private Piece[][] board, initBoard;
     private ArrayList<Move> gameMoves;
+    private ArrayList<Move> selectedMoves;
 
     Board (int rows, int cols, int tile) {
         boardNumRows = rows;
@@ -17,6 +19,7 @@ class Board {
         blackCheck = false;
         selected = new Position();
         gameMoves = new ArrayList<Move>();
+        selectedMoves = null;
         board = new Piece[boardNumRows][boardNumCols];
         initBoard = new Piece[boardNumRows][boardNumCols];
     }
@@ -82,30 +85,35 @@ class Board {
     }
 
     boolean isOccupied(Position pos) {
-        assert pos.isValid() : "invalid position";
+        assert pos.isValid() : 
+        "invalid position";
         return board[pos.getRow()][pos.getCol()] != null;
     }
-    
+
     Piece getPiece(int row, int col) {
-        assert inBounds(row, col) : "Out of bounds";
+        assert inBounds(row, col) : 
+        "Out of bounds";
         return board[row][col];
     }
 
     Piece getPiece(Position pos) {
-        assert pos.isValid() : "invalid position";
+        assert pos.isValid() : 
+        "invalid position";
         return getPiece(pos.getRow(), pos.getCol());
     }
-    
+
     Piece getInitPiece(int row, int col) {
-        assert inBounds(row, col) : "Out of bounds";
+        assert inBounds(row, col) : 
+        "Out of bounds";
         return initBoard[row][col];
     }
 
     Piece getInitPiece(Position pos) {
-        assert pos.isValid() : "invalid position";
+        assert pos.isValid() : 
+        "invalid position";
         return getPiece(pos.getRow(), pos.getCol());
     }
-    
+
     void addPiece(int row, int col, Piece p) {
         if (isOccupied(row, col))
             throw new RuntimeException("Trying to move piece to occupied space (" + row + ", " + col + ")\n");
@@ -140,16 +148,14 @@ class Board {
     }
 
     Position getMouseOver() {
-        Position pos = new Position();
-        for (int r = 0; r < boardNumRows; r++) {
-            for (int c = 0; c < boardNumCols; c++) {
-                if (isMouseOver(r, c)) {
-                    pos.setPosition(r, c);
-                    return pos;
-                }
-            }
-        }
-        return pos;
+        Position mousePosition = new Position();
+        float mouseXAdjusted =  mouseX - width/2.;
+        float mouseYAdjusted =  mouseY - height/2.;
+        int mouseRow = boardNumRows/2 + (flip?-floor(mouseYAdjusted/tileSize)-1:floor(mouseYAdjusted/tileSize));
+        int mouseCol = boardNumCols/2 + (flip?-floor(mouseXAdjusted/tileSize)-1:floor(mouseXAdjusted/tileSize));
+        if (inBounds(mouseRow, mouseCol))
+            mousePosition.setPosition(mouseRow, mouseCol);
+        return mousePosition;
     }
 
     boolean isMouseOver(int row, int col) {
@@ -162,11 +168,12 @@ class Board {
     }
 
     void drawBoard() {
+        Position mouseOver = getMouseOver();
         for (int r = 0; r < boardNumRows; r++) {
             for (int c = 0; c < boardNumCols; c++) {
                 if (selected.equals(r, c))
                     drawTile(r, c, 255, 255, 255);
-                else if (isMouseOver(r, c))
+                else if (mouseOver.equals(r, c))
                     drawTile(r, c, 255, 0, 0);
                 else if (whiteCheck && isOccupied(r, c) && board[r][c] instanceof King && board[r][c].getPlayer())
                     drawTile(r, c, 0, 0, 0);
@@ -193,14 +200,11 @@ class Board {
             drawTile(row, col, 240, 217, 181); //light color
         else 
         drawTile(row, col, 181, 136, 99); //dark color
-        /*if (isMouseOver())
-         draw(row, col, 255, 0, 0);*/
     }
 
     void drawMoves() {
         if (selected.isValid()) {
-            ArrayList<Move> moves = getValidMoves(selected);
-            for (Move move : moves) {
+            for (Move move : selectedMoves) {
                 Position pos = move.getEnd();
                 if (isOccupied(pos)) drawTile(pos.getRow(), pos.getCol(), 0, 255, 0);
                 else drawTile(pos.getRow(), pos.getCol(), 0, 255, 255);
@@ -260,14 +264,16 @@ class Board {
             getPiece(m.getEnd()).moved(); 
             gameMoves.add(m);
         }
+        
         selected.clear();
+        selectedMoves = null;
         turn = !turn;
         whiteCheck = inCheck(true);
         blackCheck = inCheck(false);
     }
 
     Move getValidMove(Position start, Position end) {
-        ArrayList<Move> moves = getValidMoves(start);
+        ArrayList<Move> moves = (selectedMoves == null?getValidMoves(start):selectedMoves);
         for (Move move : moves) {
             if (move.getEnd().equals(end))
                 return move;
@@ -278,8 +284,10 @@ class Board {
     void selectTile() {
         Position pos = getMouseOver();
         if (!selected.isValid()) {
-            if (pos.isValid() && isOccupied(pos) && (turn == getPiece(pos).getPlayer()))
+            if (pos.isValid() && isOccupied(pos) && (turn == getPiece(pos).getPlayer())) {
                 selected = pos;
+                selectedMoves = getValidMoves(pos);
+            }
         } else {
             if (!pos.isValid() || pos.equals(selected)) {
                 selected.clear();
